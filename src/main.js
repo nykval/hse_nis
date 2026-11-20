@@ -21,7 +21,7 @@ function phone(kind) {
     <div class="phone-column">
       <div class="phone-caption">
         <span class="caption-icon ${personalized ? 'caption-icon--purple' : ''}">${icon(personalized ? 'magic-wand' : 'list')}</span>
-        <div><div class="caption-title">${personalized ? 'Персонализированная' : 'Статичная'}</div><div class="caption-subtitle">${personalized ? 'Порядок зависит от профиля' : 'Один порядок для всех'}</div></div>
+        <div class="caption-title">${personalized ? 'Для пользователя' : 'Без персонализации'}</div>
       </div>
       <div class="phone ${personalized ? 'phone--personalized' : ''}">
         <div class="phone-screen">
@@ -45,27 +45,33 @@ app.innerHTML = `
         <span class="brand-collaboration" aria-hidden="true">${icon('cross-small')}</span>
         <img class="brand-hse" src="./assets/hse-logo.png" alt="Высшая школа экономики" />
       </div>
-      <span class="header-tag">ИНТЕРАКТИВНЫЙ ПРОТОТИП</span>
     </div>
   </header>
   <div class="page-shell">
-    <main class="workspace">
+    <nav class="workspace-nav" aria-label="Разделы проекта">
+      <a href="#comparison" data-view="comparison" aria-current="page">${icon('list')} Лента</a>
+      <a href="#cards" data-view="cards">${icon('settings-sliders')} Карточки <span>${cards.length}</span></a>
+      <a href="#users" data-view="users">${icon('user')} Пользователи <span>6</span></a>
+    </nav>
+    <main id="view-comparison" class="workspace">
       <section class="comparison" aria-label="Сравнение лент">
-        <div class="comparison-top"><div><span class="section-number">01 / СРАВНЕНИЕ</span><h2>Два экрана, один набор карточек</h2></div><div class="comparison-legend"><span class="legend-dot"></span> Прокрутите стартовый экран вниз к ленте</div></div>
-        <div class="phones">${phone('static')}<div class="compare-arrow" aria-hidden="true">${icon('arrow-right')}</div>${phone('personalized')}</div>
+        <h1 class="sr-only">Сравнение лент</h1>
+        <div class="phones">${phone('static')}${phone('personalized')}</div>
+        <button class="text-button reveal-feed" id="reveal-feeds">Показать карточки</button>
       </section>
       <aside class="controls" aria-label="Параметры пользователя">
-        <div class="controls-head"><div><span class="section-number">02 / ПРОФИЛЬ</span><h2>Кто смотрит ленту?</h2></div><span class="control-decoration">${icon('settings-sliders')}</span></div>
-        <p class="controls-intro">Измените сигналы пользователя. Правая лента пересчитается сразу.</p>
-        <div class="preset-label">Быстрые сценарии</div><div class="preset-grid" id="presets"></div>
+        <div class="controls-head"><h2>Профиль</h2><span class="profile-mode" id="active-profile-mode">Настройка</span></div>
+        <div class="preset-grid" id="presets" aria-label="Профили для настройки"></div>
         <div class="divider"></div>
-        <label class="field-label" for="destination">Куда собирается</label><div class="select-wrap"><select id="destination"></select></div>
-        <div class="field-label interest-heading">Что интересно <span>можно выбрать несколько</span></div><div class="interest-list" id="interests"></div>
-        <label class="field-label" for="stage">Этап поездки</label><div class="select-wrap"><select id="stage"></select></div>
+        <label class="field-label" for="destination">Направление</label><div class="select-wrap"><select id="destination"></select></div>
+        <div class="field-label interest-heading" id="interests-label">Интересы</div><div class="interest-list" id="interests" role="group" aria-labelledby="interests-label"></div>
+        <label class="field-label" for="stage">Стадия</label><div class="select-wrap"><select id="stage"></select></div>
         <label class="field-label field-label--spaced" for="signal">Последнее действие</label><div class="select-wrap"><select id="signal"></select></div>
-        <div class="score-explainer"><span class="score-icon">${icon('chart-histogram')}</span><div><strong>Как меняется порядок</strong><p>Совпадение направления +48, интересов до +36, этапа +16, недавнего поиска +20. Равные оценки сохраняют исходный порядок.</p></div></div>
+        <details class="model-details"><summary>Как работает подбор</summary><dl><div><dt>Направление</dt><dd>+48</dd></div><div><dt>Интересы</dt><dd>до +36</dd></div><div><dt>Стадия</dt><dd>+16</dd></div><div><dt>Последний поиск</dt><dd>+20</dd></div></dl><p>Равные оценки сохраняют исходный порядок.</p></details>
       </aside>
     </main>
+    <main id="view-cards" class="management-view" hidden></main>
+    <main id="view-users" class="management-view" hidden></main>
   </div>
   <dialog id="card-dialog" aria-labelledby="dialog-title"><button class="dialog-close" id="dialog-close" aria-label="Закрыть">${icon('cross-small')}</button><div id="dialog-body"></div></dialog>
 `;
@@ -74,7 +80,7 @@ const $ = selector => document.querySelector(selector);
 const selectOptions = (values, selected) => Object.entries(values).map(([value, label]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
 
 function renderControls() {
-  $('#presets').innerHTML = presets.map(p => `<button class="preset ${activePreset === p.id ? 'preset--active' : ''}" data-preset="${p.id}" aria-pressed="${activePreset === p.id}"><span class="preset-icon">${icon(p.icon)}</span><span><strong>${p.label}</strong><small>${p.description}</small></span></button>`).join('');
+  $('#presets').innerHTML = presets.map(p => `<button class="preset ${activePreset === p.id ? 'preset--active' : ''}" data-preset="${p.id}" aria-pressed="${activePreset === p.id}"><span class="preset-icon">${icon(p.icon)}</span><span><strong>${escapeHtml(p.profile.name)}</strong><small>${escapeHtml(destinationLabels[p.profile.destination])}</small></span></button>`).join('');
   $('#destination').innerHTML = selectOptions(destinationLabels, profile.destination);
   $('#stage').innerHTML = selectOptions(stageLabels, profile.stage);
   $('#signal').innerHTML = selectOptions(signalLabels, profile.signal);
@@ -107,7 +113,7 @@ function showCard(id, kind) {
   const { score, parts } = scoreCard(item, profile);
   const staticPosition = cards.findIndex(c => c.id === id) + 1;
   const rankPosition = rankedCards(profile).findIndex(c => c.id === id) + 1;
-  $('#dialog-body').innerHTML = `<div class="dialog-layout"><img class="dialog-image" src="${item.image}" alt="${escapeHtml(item.title)}"><div class="dialog-copy"><span class="section-number">КАРТОЧКА #${String(id).padStart(3, '0')}</span><h2 id="dialog-title">${escapeHtml(item.title)}</h2><p>В статичной ленте: <strong>${staticPosition} место</strong><br>В персонализированной: <strong>${rankPosition} место</strong></p><div class="dialog-score">${score ? `+${score} баллов` : '0 баллов'} <span>демонстрационная оценка</span></div><div class="reason-title">Почему такая позиция</div>${parts.length ? `<ul class="reason-list">${parts.map(p => `<li><span>${escapeHtml(p.label)}</span><strong>+${p.value}</strong></li>`).join('')}</ul>` : '<p class="no-reason">Пока нет совпадений с параметрами профиля. Карточка остаётся в исходном порядке среди карточек с такой же оценкой.</p>'}<div class="dialog-origin">${kind === 'static' ? 'Открыто из статичной ленты' : 'Открыто из персонализированной ленты'}</div></div></div>`;
+  $('#dialog-body').innerHTML = `<div class="dialog-layout"><img class="dialog-image" src="${item.image}" alt="${escapeHtml(item.title)}"><div class="dialog-copy"><span class="section-number">#${String(id).padStart(3, '0')}</span><h2 id="dialog-title">${escapeHtml(item.title)}</h2><p>Без персонализации: <strong>№${staticPosition}</strong><br>Для пользователя: <strong>№${rankPosition}</strong></p><div class="dialog-score">${score} баллов</div>${parts.length ? `<ul class="reason-list">${parts.map(p => `<li><span>${escapeHtml(p.label)}</span><strong>+${p.value}</strong></li>`).join('')}</ul>` : '<p class="no-reason">Нет совпадений с профилем.</p>'}</div></div>`;
   $('#card-dialog').showModal();
 }
 
@@ -117,6 +123,7 @@ $('#presets').addEventListener('click', event => {
   const preset = presets.find(p => p.id === button.dataset.preset);
   profile = structuredClone(preset.profile);
   activePreset = preset.id;
+  $('#active-profile-mode').textContent = 'Настройка';
   renderControls(); renderFeeds(); revealFeeds();
 });
 
@@ -126,12 +133,14 @@ $('#interests').addEventListener('click', event => {
   const interest = button.dataset.interest;
   profile.interests = profile.interests.includes(interest) ? profile.interests.filter(i => i !== interest) : [...profile.interests, interest];
   activePreset = null; renderControls(); renderFeeds(); revealFeeds();
+  $('#active-profile-mode').textContent = 'Свои параметры';
 });
 
 for (const key of ['destination', 'stage', 'signal']) {
   $(`#${key}`).addEventListener('change', event => {
     profile[key] = event.target.value;
     activePreset = null; renderControls(); renderFeeds(); revealFeeds();
+    $('#active-profile-mode').textContent = 'Свои параметры';
   });
 }
 
@@ -141,8 +150,21 @@ $('.phones').addEventListener('click', event => {
 });
 
 $('#dialog-close').addEventListener('click', () => $('#card-dialog').close());
+$('#reveal-feeds').addEventListener('click', revealFeeds);
 $('#card-dialog').addEventListener('click', event => { if (event.target === $('#card-dialog')) $('#card-dialog').close(); });
 
 renderControls();
 renderFeeds();
+window.feedApp = {
+  refresh() { renderControls(); renderFeeds(); },
+  applyProfile(selected) {
+    profile = structuredClone(selected);
+    activePreset = selected.split === 'tuning' ? selected.id : null;
+    $('#active-profile-mode').textContent = selected.split === 'evaluation'
+      ? `Оценка · ${selected.name}`
+      : 'Настройка';
+    renderControls(); renderFeeds();
+    requestAnimationFrame(revealFeeds);
+  },
+};
 })();
